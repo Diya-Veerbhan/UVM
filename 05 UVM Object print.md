@@ -23,6 +23,6 @@
   ![image](https://github.com/Diya-Veerbhan/UVM/assets/64258231/474d59c2-965c-4820-a13d-595d60d1d92b)
 ## Using sprint
 * It returns formatted content in a string format
-* Substitute of print function
+* Substitute of print function----????
   
 
