@@ -18,3 +18,12 @@
 ![image](https://github.com/Diya-Veerbhan/UVM/assets/64258231/aff374a3-ac0a-45a0-82f5-934617aa909c)
 
 ## Hierarchy Methods
+* <b> get_parent:</b> It returns a handle for the current component’s parent. If it has no parent, then it returns null.
+
+ * <b> get_full_name:</b> It returns a complete hierarchical name for this object.
+ ![image](https://github.com/Diya-Veerbhan/UVM/assets/64258231/6c7090a8-0d7d-489e-9381-4c3d83484016)
+ * example ---?
+   ![image](https://github.com/Diya-Veerbhan/UVM/assets/64258231/c45c415b-c46c-49ae-86c9-4b95bf4b11db)
+
+## Phasing methods
+
