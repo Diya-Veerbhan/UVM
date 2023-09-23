@@ -17,14 +17,15 @@ endinterface
 //////////////////////////////////////////////
 
 
- // Code your testbench here
+// Code your testbench here
 // or browse Examples
+
 //////////////////////////////////////////////
 `timescale 1ns/1ps
 
 ///////Transaction class//////////////////
 `include "uvm_macros.svh" //to access uvm macros
-import uvm_pkg::*;//to access all the base classes
+ import uvm_pkg::*;//to access all the base classes
 //both are required to compile the uvm code
 class transaction extends uvm_sequence_item;
   //adding input and output ports of the DUT
@@ -59,7 +60,7 @@ class generator extends uvm_sequence #(transaction);
   `uvm_object_utils(generator)
   
   transaction t;
-  interger i ;//a count variable to specify the number of stimuli we will send to DUT
+  integer i ;//a count variable to specify the number of stimuli we will send to DUT
   
   // adding the constructor for this class
   function new (input string path = "generator");
@@ -75,7 +76,7 @@ class generator extends uvm_sequence #(transaction);
         //after receiving the grant, we call randomize method
         t.randomize();
         //this will generate the random values for the rand variables
-        `uvm_info("GEN", $sformat("Data sent to driver a : %0d b : %0d", t.a,t.b))
+        `uvm_info("GEN", $sformatf("Data sent to driver a : %0d b : %0d", t.a,t.b), UVM_NONE)
         finish_item(t);//this will be sending the data to the driver through the sequencer
       end
   endtask
@@ -90,7 +91,7 @@ class driver extends uvm_driver #(transaction);
   `uvm_component_utils(driver)
   
   //defining constructor, as it is a uvm component derived class it should two arguments
-  function void new (input string path = "driver", uvm_component parent = null);
+  function new (input string path = "driver", uvm_component parent = null);
     super.new(path, parent);
   endfunction
   
@@ -121,15 +122,17 @@ class driver extends uvm_driver #(transaction);
       aif.a <= tc.a;
       aif.b <= tc.b;
       //when you are triggering the interface use non-blocking assignment whereas when you are updating the data member of the class use blocking assignment(example in monitor)
-      `uvm_info("DRV", $sformat("trigger the DUT input a : %0d, b : %0d ", tc.a, tc.b), UVM_NONE)
+      `uvm_info("DRV", $sformatf("trigger the DUT input a : %0d, b : %0d ", tc.a, tc.b), UVM_NONE)
       #10;
     end
+  endtask
   
 endclass
     
 //////MONITOR///////////////    
  
-class monitor extends uvm_monitor;
+class monitor
+  extends uvm_monitor;
  `uvm_component_utils(monitor)
   // analysis  port to send the data from the monitor to the scoreboard
   uvm_analysis_port #(transaction) send;    
@@ -147,10 +150,11 @@ class monitor extends uvm_monitor;
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
     t = transaction :: type_id :: create("t");
-    if (!uvm_config_db #(virtual add_if) ::get(this, "", "aif", aif) 
-        `uvm_error("MON", "Unable to access the uvm_config_db")
+    if(!uvm_config_db #(virtual add_if)::get(this,"","aif",aif)) 
+   `uvm_error("MON","Unable to access uvm_config_db");
   endfunction
-        virtual task run_phase(uvm_phase phase);
+ 
+ virtual task run_phase(uvm_phase phase);
           forever begin
            #10;//wait for the stimulus applied to have a valid response
             //assigning the data received from DUT to the local transaction instance
@@ -191,14 +195,101 @@ class scoreboard extends uvm_component;
  endclass
               
 ////////////////Agent/////////////////////
-              class agent extends uvm_agent;
-                `uvm_component_utils(agent)
+ class agent extends uvm_agent;
+   `uvm_component_utils(agent)
+   
+   
                 
-                function new (input string path = "agent" uvm_component parent=null);
-                  super.new(path, parent);
-                endfunction
-              endclass
+  function new(input string inst = "AGENT", uvm_component c);
+     super.new(inst, c);
+     endfunction
+    //defining the instances for monitor, driver and seqr          
+   monitor m;
+   driver d;
+   uvm_sequencer #(transaction) seqr;
+   virtual function void build_phase(uvm_phase phase);
+     super.build_phase(phase);
+     //creating objects for monitor, driver and seqr
+     m = monitor :: type_id ::create("m", this);
+     d = driver ::type_id :: create("d", this);
+     seqr= uvm_sequencer #(transaction) :: type_id :: create("seqr", this);
+   endfunction
+   
+   virtual function void connect_phase(uvm_phase phase);
+     super.connect_phase(phase);
+     //connecing the port of driver and sequencer (not declared explicitly in driver and seqr, but their methods have been used in the run_phase task)
+     d.seq_item_port.connect(seqr.seq_item_export);
+   endfunction
+ endclass
+////////////env/////////////////////////
+            class env extends uvm_env;
+              `uvm_component_utils(env);
+              
+              function new (input string inst = "env", uvm_component c);
+                super.new(inst, c);
+              endfunction
+              
+              //creating instances of scoreboard and agent : part of env
+              scoreboard s;
+              agent a;
+              
+              virtual function void build_phase(uvm_phase phase);
+                super.build_phase(phase);
+                //creating the object of the scoreboard and agent
+                s = scoreboard::type_id::create("s", this);
+                a = agent :: type_id :: create("a", this);
+              endfunction
+              
+              virtual function void connect_phase(uvm_phase phase);
+                super.connect_phase(phase);
+                // connecting the send analysis port of the monitor with the recv analysis port of scoreboard
+                a.m.send.connect(s.recv);
+              endfunction
+              
+            endclass
+              
+ ///////////////test/////////////////////
+            class test extends uvm_test;
+              `uvm_component_utils(test)
+              
+              function new(input string inst="test", uvm_component c);
+                super.new(inst, c);
+              endfunction
+              //creating instances of sequence(generator) and env
+             generator gen; 
+             env e;
+              
+              virtual function void build_phase(uvm_phase phase);
+                super.build_phase(phase);
+                //creating object of the sequence(generator) and env
+                gen = generator :: type_id :: create("gen"); 
+                e = env :: type_id :: create("e", this);
+              endfunction
+              
+              virtual task run_phase(uvm_phase phase);
+                phase.raise_objection(this);
+                //starting the sequence and specifying the sequencer
+                gen.start(e.a.seqr);
+                phase.drop_objection(this);
+              endtask
+            endclass
+/////////////////////tb_top//////////////////
+            module add_tb();
+              //instantiating the interface
+              add_if aif();
+              add dut(.a(aif.a), .b(aif.b), .y(aif.y));
+              
+              initial begin
+                $dumpfile("dump.vcd");
+                $dumpvars;
+              end
+              
+              initial begin
+                //calling set method of uvm_config_db
+                // accessing the agent uvm_test_top.e.a* as both monitor and driver needs access to the interface
+                uvm_config_db #(virtual add_if) ::set(null, "uvm_test_top.e.a*", "aif", aif);
+                //specifying the name of our component : test
+                run_test("test");
+              end
+            endmodule
             
-            monitor m;
-            driver d;
-            uvm_sequencer 
