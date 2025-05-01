@@ -16,7 +16,7 @@ macro
 ![image](https://github.com/Diya-Veerbhan/UVM/assets/64258231/d7ae9a40-60d9-4bb6-8066-46fea8b55389)
 
  ### Component Utility
- * All classes directly or indirectlly derived from the uvm_component required them to be registered to the factory using <b> `uvm_object_utils </b>
+ * All classes directly or indirectlly derived from the uvm_component required them to be registered to the factory using <b> `uvm_component_utils </b>
  macro
 * <b> Note </b> : It is mandatory for the new function to be explicitly defined for every class derived directly or indirectly from uvm_component
 and takes the name of the class instance and a handle to the parent class where this object is instantiated
